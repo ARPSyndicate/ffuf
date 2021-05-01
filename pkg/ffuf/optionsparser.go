@@ -26,18 +26,19 @@ type ConfigOptions struct {
 }
 
 type HTTPOptions struct {
-	Cookies         []string
-	Data            string
-	FollowRedirects bool
-	Headers         []string
-	IgnoreBody      bool
-	Method          string
-	ProxyURL        string
-	Recursion       bool
-	RecursionDepth  int
-	ReplayProxyURL  string
-	Timeout         int
-	URL             string
+	Cookies           []string
+	Data              string
+	FollowRedirects   bool
+	Headers           []string
+	IgnoreBody        bool
+	Method            string
+	ProxyURL          string
+	Recursion         bool
+	RecursionDepth    int
+	RecursionStrategy string
+	ReplayProxyURL    string
+	Timeout           int
+	URL               string
 }
 
 type GeneralOptions struct {
@@ -48,6 +49,7 @@ type GeneralOptions struct {
 	Delay                  string
 	MaxTime                int
 	MaxTimeJob             int
+	Noninteractive         bool
 	Quiet                  bool
 	Rate                   int
 	ShowVersion            bool `toml:"-"`
@@ -72,11 +74,11 @@ type InputOptions struct {
 }
 
 type OutputOptions struct {
-	DebugLog        string
-	OutputDirectory string
-	OutputFile      string
-	OutputFormat    string
-	OutputCreateEmptyFile	bool
+	DebugLog              string
+	OutputDirectory       string
+	OutputFile            string
+	OutputFormat          string
+	OutputCreateEmptyFile bool
 }
 
 type FilterOptions struct {
@@ -108,6 +110,7 @@ func NewConfigOptions() *ConfigOptions {
 	c.General.Delay = ""
 	c.General.MaxTime = 0
 	c.General.MaxTimeJob = 0
+	c.General.Noninteractive = false
 	c.General.Quiet = false
 	c.General.Rate = 0
 	c.General.ShowVersion = false
@@ -123,6 +126,7 @@ func NewConfigOptions() *ConfigOptions {
 	c.HTTP.ProxyURL = ""
 	c.HTTP.Recursion = false
 	c.HTTP.RecursionDepth = 0
+	c.HTTP.RecursionStrategy = "default"
 	c.HTTP.ReplayProxyURL = ""
 	c.HTTP.Timeout = 10
 	c.HTTP.URL = ""
@@ -253,14 +257,14 @@ func ConfigFromOptions(parseOpts *ConfigOptions, ctx context.Context, cancel con
 			// except if used in custom defined header
 			var CanonicalNeeded = true
 			for _, a := range conf.CommandKeywords {
-				if a == hs[0] {
+				if strings.Contains(hs[0], a) {
 					CanonicalNeeded = false
 				}
 			}
 			// check if part of InputProviders
 			if CanonicalNeeded {
 				for _, b := range conf.InputProviders {
-					if b.Keyword == hs[0] {
+					if strings.Contains(hs[0], b.Keyword) {
 						CanonicalNeeded = false
 					}
 				}
@@ -387,11 +391,13 @@ func ConfigFromOptions(parseOpts *ConfigOptions, ctx context.Context, cancel con
 	conf.FollowRedirects = parseOpts.HTTP.FollowRedirects
 	conf.Recursion = parseOpts.HTTP.Recursion
 	conf.RecursionDepth = parseOpts.HTTP.RecursionDepth
+	conf.RecursionStrategy = parseOpts.HTTP.RecursionStrategy
 	conf.AutoCalibration = parseOpts.General.AutoCalibration
 	conf.Threads = parseOpts.General.Threads
 	conf.Timeout = parseOpts.HTTP.Timeout
 	conf.MaxTime = parseOpts.General.MaxTime
 	conf.MaxTimeJob = parseOpts.General.MaxTimeJob
+	conf.Noninteractive = parseOpts.General.Noninteractive
 	conf.Verbose = parseOpts.General.Verbose
 
 	// Handle copy as curl situation where POST method is implied by --data flag. If method is set to anything but GET, NOOP
@@ -483,6 +489,12 @@ func parseRawRequest(parseOpts *ConfigOptions, conf *Config) error {
 	}
 	conf.Data = string(b)
 
+	// Remove newline (typically added by the editor) at the end of the file
+	if strings.HasSuffix(conf.Data, "\r\n") {
+		conf.Data = conf.Data[:len(conf.Data)-2]
+	} else if strings.HasSuffix(conf.Data, "\n") {
+		conf.Data = conf.Data[:len(conf.Data)-1]
+	}
 	return nil
 }
 
