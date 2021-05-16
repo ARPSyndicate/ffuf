@@ -37,6 +37,7 @@ type HTTPOptions struct {
 	RecursionDepth    int
 	RecursionStrategy string
 	ReplayProxyURL    string
+	SNI               string
 	Timeout           int
 	URL               string
 }
@@ -74,11 +75,11 @@ type InputOptions struct {
 }
 
 type OutputOptions struct {
-	DebugLog              string
-	OutputDirectory       string
-	OutputFile            string
-	OutputFormat          string
-	OutputCreateEmptyFile bool
+	DebugLog            string
+	OutputDirectory     string
+	OutputFile          string
+	OutputFormat        string
+	OutputSkipEmptyFile bool
 }
 
 type FilterOptions struct {
@@ -129,6 +130,7 @@ func NewConfigOptions() *ConfigOptions {
 	c.HTTP.RecursionStrategy = "default"
 	c.HTTP.ReplayProxyURL = ""
 	c.HTTP.Timeout = 10
+	c.HTTP.SNI = ""
 	c.HTTP.URL = ""
 	c.Input.DirSearchCompat = false
 	c.Input.Extensions = ""
@@ -146,7 +148,7 @@ func NewConfigOptions() *ConfigOptions {
 	c.Output.OutputDirectory = ""
 	c.Output.OutputFile = ""
 	c.Output.OutputFormat = "json"
-	c.Output.OutputCreateEmptyFile = false
+	c.Output.OutputSkipEmptyFile = false
 	return c
 }
 
@@ -247,6 +249,11 @@ func ConfigFromOptions(parseOpts *ConfigOptions, ctx context.Context, cancel con
 	//Prepare URL
 	if parseOpts.HTTP.URL != "" {
 		conf.Url = parseOpts.HTTP.URL
+	}
+
+	// Prepare SNI
+	if parseOpts.HTTP.SNI != "" {
+		conf.SNI = parseOpts.HTTP.SNI
 	}
 
 	//Prepare headers and make canonical
@@ -382,7 +389,7 @@ func ConfigFromOptions(parseOpts *ConfigOptions, ctx context.Context, cancel con
 	conf.InputShell = parseOpts.Input.InputShell
 	conf.OutputFile = parseOpts.Output.OutputFile
 	conf.OutputDirectory = parseOpts.Output.OutputDirectory
-	conf.OutputCreateEmptyFile = parseOpts.Output.OutputCreateEmptyFile
+	conf.OutputSkipEmptyFile = parseOpts.Output.OutputSkipEmptyFile
 	conf.IgnoreBody = parseOpts.HTTP.IgnoreBody
 	conf.Quiet = parseOpts.General.Quiet
 	conf.StopOn403 = parseOpts.General.StopOn403
